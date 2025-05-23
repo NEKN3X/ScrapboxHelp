@@ -1,0 +1,8 @@
+body {
+  background-color: transparent;
+}
+
+:root {
+  width: max-content;
+  height: max-content;
+}
