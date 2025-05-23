@@ -14,6 +14,11 @@ const helpStorage = storage.defineItem<HelpStorage>('local:help-scrapbox', {
   fallback: [],
 });
 
+export const getAllHelp = async () => {
+  const storageData = await helpStorage.getValue();
+  return storageData;
+};
+
 export const updateHelp = async (input: HelpStorageItem) => {
   const storageData = await helpStorage.getValue();
   [storageData.filter((item) => item.page !== input.page), input];

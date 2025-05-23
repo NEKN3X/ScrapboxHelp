@@ -6,11 +6,11 @@ export const storeExampleScrapboxHelp = async () => {
       page: `https://scrapbox.io/example-project/example`,
       help: [
         {
-          command: 'example',
+          command: '(例|example)',
           open: 'https://scrapbox.io/example-project/example',
         },
         {
-          command: 'example2',
+          command: '(例2|example2)',
           open: 'https://scrapbox.io/example-project/example2',
         },
       ],
@@ -19,12 +19,12 @@ export const storeExampleScrapboxHelp = async () => {
       page: `https://scrapbox.io/example-project2/example`,
       help: [
         {
-          command: 'example3',
-          open: 'https://scrapbox.io/example-project2/example3',
+          command: 'xyzに関する(説明|情報)',
+          open: 'https://scrapbox.io/example-project2/xyz',
         },
         {
-          command: 'example4',
-          open: 'https://scrapbox.io/example-project2/example4',
+          command: 'abcに関する(説明|情報)',
+          open: 'https://scrapbox.io/example-project2/abc',
         },
       ],
     },
