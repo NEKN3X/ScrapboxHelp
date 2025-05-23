@@ -24,6 +24,7 @@
     "react-dom": "^19.1.0",
     "tailwind-merge": "^3.3.0",
     "tailwindcss": "^4.1.7",
+    "ts-pattern": "^5.7.1",
     "tw-animate-css": "^1.3.0"
   },
   "devDependencies": {
