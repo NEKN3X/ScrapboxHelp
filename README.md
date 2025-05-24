@@ -1,5 +1,6 @@
 # ScrapboxHelp
 
+- [OmniHelp](https://github.com/NEKN3X/OmniHelp)のOmniboxを使わないversion
 - 主な機能
   - Scrapboxのページをあいまい検索する
   - Scrapbox以外のWebページをあいまい検索する
