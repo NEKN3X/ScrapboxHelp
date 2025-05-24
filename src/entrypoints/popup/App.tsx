@@ -232,6 +232,7 @@ function App() {
                       query: searchText,
                       disposition: disposition,
                     });
+                    window.close();
                   }}
                 >
                   <Globe />
