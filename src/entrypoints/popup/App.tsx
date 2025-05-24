@@ -8,7 +8,13 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from '@/components/ui/command';
-import { addHelpForPage, getAllHelp, HelpStorage } from '@/utils/help/storage';
+import {
+  addHelpForPage,
+  editHelp,
+  getAllHelp,
+  HelpStorage,
+  watchHelpStorage,
+} from '@/utils/help/storage';
 import {
   openUrlInCurrentTab,
   openUrlInNewBackgroundTab,
@@ -23,7 +29,6 @@ import {
   ChevronLeft,
   ChevronRight,
   CornerDownLeft,
-  Delete,
   ExternalLink,
   FilePlus,
   Link2,
@@ -48,13 +53,24 @@ const isAddHelpPage = atom((get) => {
   if (!page) return false;
   return page === 'add-help';
 });
+const isShowHelpPage = atom((get) => {
+  const page = get(pageAtom);
+  if (!page) return false;
+  return page === 'show-help';
+});
+const isEditHelpPage = atom((get) => {
+  const page = get(pageAtom);
+  if (!page) return false;
+  return page === 'edit-help';
+});
+const editingCommandAtom = atom('');
 const isTopPage = atom((get) => {
   const page = get(pageAtom);
   if (!page) return true;
   return false;
 });
 const helpfeelExpandedAtom = atom((get) => {
-  if (!get(isAddHelpPage)) return [];
+  if (!(get(isAddHelpPage) || get(isEditHelpPage))) return [];
   const command = get(searchTextAtom);
   try {
     return expand(command);
@@ -82,6 +98,15 @@ const searchResultsAtom = atom((get) => {
     return acc;
   }, [] as SearchResult[]);
 });
+const activeTabHelpAtom = atom(async (get) => {
+  const activeUrl = get(activeUrlAtom);
+  if (!activeUrl) return [];
+  const helpStorage = get(helpStorageAtom);
+  const pageHelp = helpStorage
+    .filter((item) => item.page === activeUrl)
+    .flatMap((item) => item.help);
+  return pageHelp;
+});
 
 function App() {
   const setHelpStorage = useSetAtom(helpStorageAtom);
@@ -90,18 +115,29 @@ function App() {
   const helpfeelExpanded = useAtomValue(helpfeelExpandedAtom);
   const nowAddHelpPage = useAtomValue(isAddHelpPage);
   const nowTopPage = useAtomValue(isTopPage);
+  const nowEditPage = useAtomValue(isEditHelpPage);
+  const nowShowHelpPage = useAtomValue(isShowHelpPage);
   const [pages, setPages] = useAtom(pagesAtom);
   const setActiveTabId = useSetAtom(activeTabIdAtom);
   const [activeUrl, setActiveUrl] = useAtom(activeUrlAtom);
+  const activeTabHelp = useAtomValue(activeTabHelpAtom);
+  const [editingCommand, setEditingCommand] = useAtom(editingCommandAtom);
 
   useEffect(() => {
     getAllHelp().then((helpStorage) => {
       setHelpStorage(helpStorage);
     });
+    const unwatch = watchHelpStorage((n) => {
+      setHelpStorage(n);
+    });
     browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
       setActiveTabId(tabs[0].id);
       setActiveUrl(tabs[0].url);
     });
+
+    return () => {
+      unwatch();
+    };
   }, []);
 
   const openUrlWithModifier = (url: string) => {
@@ -118,10 +154,11 @@ function App() {
       shouldFilter={false}
       onKeyDown={(e) => {
         if (
-          !nowTopPage &&
-          (e.key === 'Escape' ||
-            (e.key === 'Backspace' && searchText.length === 0))
+          (e.key === 'Escape' && !nowTopPage) ||
+          (e.key === 'Escape' && searchText.length > 0) ||
+          (e.key === 'Backspace' && searchText.length === 0)
         ) {
+          setSearchText('');
           e.preventDefault();
           backPage();
         }
@@ -130,10 +167,10 @@ function App() {
       <CommandInput
         value={searchText}
         onValueChange={setSearchText}
-        placeholder={nowAddHelpPage ? 'Helpfeel記法' : 'コマンドを検索する'}
+        placeholder={nowAddHelpPage ? 'Helpfeel記法' : 'ページを検索する'}
         autoFocus
         icon={
-          nowAddHelpPage ? (
+          !nowTopPage ? (
             <>
               <ChevronLeft className="size-4 shrink-0 opacity-50" />
               <MessageCircleQuestion className="size-4 shrink-0 opacity-50" />
@@ -148,7 +185,7 @@ function App() {
               {searchResults.map((item) => (
                 <CommandItem
                   key={`${item.content}-${item.description}`}
-                  value={item.description}
+                  value={`${item.content}-${item.description}`}
                   className="text-xs"
                   onSelect={() => openUrlWithModifier(item.content)}
                 >
@@ -163,77 +200,116 @@ function App() {
             <CommandSeparator alwaysRender />
           </>
         )}
-        <CommandGroup heading="コマンド">
-          {!nowAddHelpPage && searchText.length > 0 && (
-            <CommandItem
-              className="text-xs"
-              onSelect={() =>
-                openUrlWithModifier(
-                  `https://scrapbox.io/${import.meta.env.VITE_NEW_PAGE_PROJECT}/${searchText}`
-                )
-              }
-            >
-              <FilePlus />
-              <span>新しいページを作成する</span>
-              <CommandShortcut>
-                <ExternalLink />
-              </CommandShortcut>
-            </CommandItem>
-          )}
-          {nowTopPage && (
+        {nowTopPage && (
+          <CommandGroup heading="コマンド">
+            {searchText.length > 0 && (
+              <CommandItem
+                className="text-xs"
+                onSelect={() =>
+                  openUrlWithModifier(
+                    `https://scrapbox.io/${import.meta.env.VITE_NEW_PAGE_PROJECT}/${searchText}`
+                  )
+                }
+              >
+                <FilePlus />
+                <span>新しいページを作成する</span>
+                <CommandShortcut>
+                  <ExternalLink />
+                </CommandShortcut>
+              </CommandItem>
+            )}
             <CommandItem
               className="text-xs"
               onSelect={() => setPages([...pages, 'add-help'])}
             >
               <MessageCircleQuestion />
-              <span>ヘルプを追加する</span>
+              <span>このページのヘルプを追加する</span>
               <CommandShortcut>
                 <ChevronRight />
               </CommandShortcut>
             </CommandItem>
-          )}
-          {nowAddHelpPage && (
-            <>
-              <CommandItem
-                className="text-xs"
-                onSelect={() => {
-                  if (!activeUrl) return;
-                  addHelpForPage(activeUrl, {
-                    command: searchText,
-                    open: activeUrl,
-                  })
-                    .then
-                    // () => window.close()
-                    ();
-                }}
-                disabled={helpfeelExpanded.length === 0}
-              >
-                <span>ヘルプを追加する</span>
-                <CommandShortcut>
-                  <CornerDownLeft />
-                </CommandShortcut>
-              </CommandItem>
-              <CommandItem className="text-xs" onSelect={backPage}>
-                <span>戻る</span>
-                <CommandShortcut>
-                  <Delete />
-                </CommandShortcut>
-              </CommandItem>
-            </>
-          )}
-        </CommandGroup>
-        {nowAddHelpPage && helpfeelExpanded.length > 0 && (
+          </CommandGroup>
+        )}
+        {nowAddHelpPage && (
+          <CommandGroup heading="コマンド">
+            <CommandItem
+              className="text-xs"
+              onSelect={() => {
+                if (!activeUrl) return;
+                addHelpForPage(activeUrl, {
+                  command: searchText,
+                  open: activeUrl,
+                }).then(() => {
+                  setSearchText('');
+                  backPage();
+                });
+              }}
+              disabled={helpfeelExpanded.length === 0}
+            >
+              <span>ヘルプを追加する</span>
+              <CommandShortcut>
+                <CornerDownLeft />
+              </CommandShortcut>
+            </CommandItem>
+          </CommandGroup>
+        )}
+        {nowEditPage && (
+          <CommandGroup heading="コマンド">
+            <CommandItem
+              className="text-xs"
+              onSelect={() => {
+                if (!activeUrl) return;
+                editHelp(activeUrl, editingCommand, searchText).then(() => {
+                  setSearchText('');
+                  backPage();
+                });
+              }}
+              disabled={helpfeelExpanded.length === 0}
+            >
+              <span>ヘルプを更新する</span>
+              <CommandShortcut>
+                <CornerDownLeft />
+              </CommandShortcut>
+            </CommandItem>
+          </CommandGroup>
+        )}
+        {helpfeelExpanded.length > 0 && (
           <>
             <CommandSeparator alwaysRender />
             <CommandGroup
               heading={<span className="flex">Helpfeel記法を展開後▼</span>}
             >
-              {nowAddHelpPage &&
-                helpfeelExpanded.map((item) => (
-                  <CommandItem disabled key={item} className="text-xs">
-                    {item}
-                  </CommandItem>
-                ))}
+              {helpfeelExpanded.map((item) => (
+                <CommandItem disabled key={item} className="text-xs">
+                  {item}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </>
+        )}
+        {nowTopPage && activeTabHelp.length > 0 && searchText.length === 0 && (
+          <>
+            <CommandSeparator alwaysRender />
+            <CommandGroup heading="このページのヘルプ">
+              {activeTabHelp.map((item) => (
+                <CommandItem
+                  key={item.command}
+                  className="text-xs"
+                  onSelect={() => {
+                    setPages([...pages, 'edit-help']);
+                    setEditingCommand(item.command);
+                    setSearchText(item.command);
+                  }}
+                  onHighlight={() => {
+                    setEditingCommand(item.command);
+                  }}
+                >
+                  <span>{item.command}</span>
+                  <CommandShortcut>
+                    <ChevronRight />
+                  </CommandShortcut>
+                </CommandItem>
+              ))}
             </CommandGroup>
           </>
         )}
