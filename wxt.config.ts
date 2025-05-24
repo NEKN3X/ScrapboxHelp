@@ -8,7 +8,13 @@ export default defineConfig({
   manifest: {
     name: import.meta.env.APP_NAME,
     options_page: 'options.html',
-    permissions: ['storage'],
+    permissions: ['storage', `bookmarks`],
+    web_accessible_resources: [
+      {
+        resources: ['main-world.js'],
+        matches: ['https://scrapbox.io/*'],
+      },
+    ],
   },
   imports: false,
   vite: () => ({

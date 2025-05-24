@@ -21,6 +21,7 @@ import {
   openUrlInNewTab,
   openUrlInNewWindow,
 } from '@/utils/open';
+import { getAllScrapboxPages, ScrapboxPageStorage } from '@/utils/page/storage';
 import { expand } from '@/utils/parser/helpfeel';
 import { matchScrapboxUrl } from '@/utils/scrapbox';
 import { search, SearchResult } from '@/utils/search';
@@ -42,6 +43,7 @@ const activeTabIdAtom = atom<number>();
 const activeUrlAtom = atom<string>();
 const searchTextAtom = atom<string>('');
 const helpStorageAtom = atom<HelpStorage>([]);
+const scrapboxPageStorageAtom = atom<ScrapboxPageStorage>([]);
 const pagesAtom = atom<string[]>([]);
 const pageAtom = atom((get) => {
   const pages = get(pagesAtom);
@@ -52,11 +54,6 @@ const isAddHelpPage = atom((get) => {
   const page = get(pageAtom);
   if (!page) return false;
   return page === 'add-help';
-});
-const isShowHelpPage = atom((get) => {
-  const page = get(pageAtom);
-  if (!page) return false;
-  return page === 'show-help';
 });
 const isEditHelpPage = atom((get) => {
   const page = get(pageAtom);
@@ -83,20 +80,30 @@ const searchResultsAtom = atom((get) => {
   const searchText = get(searchTextAtom);
   if (!searchText) return [];
   const helpStorage = get(helpStorageAtom);
-  const suggests = helpStorage.flatMap((item) =>
-    item.help.flatMap((help) =>
-      expand(help.command).map((e) => ({
-        content: help.open,
-        description: e,
-      }))
+  const scrapboxPageStorage = get(scrapboxPageStorageAtom);
+  const suggests = helpStorage
+    .flatMap((item) =>
+      item.help.flatMap((help) =>
+        expand(help.command).map((e) => ({
+          content: help.open,
+          description: e,
+        }))
+      )
     )
-  );
+    .concat(
+      scrapboxPageStorage.flatMap((item) => ({
+        content: item.url,
+        description: item.title,
+      }))
+    );
   const result = search(suggests, searchText);
-  return result.reduce((acc, item) => {
-    const isDuplicate = acc.some((i) => i.content === item.content);
-    if (!isDuplicate) acc.push(item);
-    return acc;
-  }, [] as SearchResult[]);
+  return result
+    .reduce((acc, item) => {
+      const isDuplicate = acc.some((i) => i.content === item.content);
+      if (!isDuplicate) acc.push(item);
+      return acc;
+    }, [] as SearchResult[])
+    .slice(0, 8);
 });
 const activeTabHelpAtom = atom(async (get) => {
   const activeUrl = get(activeUrlAtom);
@@ -110,13 +117,13 @@ const activeTabHelpAtom = atom(async (get) => {
 
 function App() {
   const setHelpStorage = useSetAtom(helpStorageAtom);
+  const setScrapboxPageStorage = useSetAtom(scrapboxPageStorageAtom);
   const [searchText, setSearchText] = useAtom(searchTextAtom);
   const searchResults = useAtomValue(searchResultsAtom);
   const helpfeelExpanded = useAtomValue(helpfeelExpandedAtom);
   const nowAddHelpPage = useAtomValue(isAddHelpPage);
   const nowTopPage = useAtomValue(isTopPage);
   const nowEditPage = useAtomValue(isEditHelpPage);
-  const nowShowHelpPage = useAtomValue(isShowHelpPage);
   const [pages, setPages] = useAtom(pagesAtom);
   const setActiveTabId = useSetAtom(activeTabIdAtom);
   const [activeUrl, setActiveUrl] = useAtom(activeUrlAtom);
@@ -127,7 +134,10 @@ function App() {
     getAllHelp().then((helpStorage) => {
       setHelpStorage(helpStorage);
     });
-    const unwatch = watchHelpStorage((n) => {
+    getAllScrapboxPages().then((scrapboxPageStorage) => {
+      setScrapboxPageStorage(scrapboxPageStorage);
+    });
+    const unwatchHelpStorage = watchHelpStorage((n) => {
       setHelpStorage(n);
     });
     browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
@@ -136,7 +146,7 @@ function App() {
     });
 
     return () => {
-      unwatch();
+      unwatchHelpStorage();
     };
   }, []);
 
@@ -178,7 +188,7 @@ function App() {
           ) : undefined
         }
       />
-      <CommandList>
+      <CommandList className="max-h-[389px]">
         {nowTopPage && searchResults.length > 0 && (
           <>
             <CommandGroup heading="ページを開く">
