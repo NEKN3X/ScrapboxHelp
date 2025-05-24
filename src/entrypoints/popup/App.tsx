@@ -29,12 +29,16 @@ import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai';
 import {
   ChevronLeft,
   ChevronRight,
+  CircleHelp,
+  CirclePlus,
+  CircleX,
   CornerDownLeft,
   ExternalLink,
   FilePlus,
   Globe,
   Link2,
   MessageCircleQuestion,
+  Pencil,
   StickyNote,
 } from 'lucide-react';
 import { useEffect } from 'react';
@@ -285,6 +289,7 @@ function App() {
               }}
               disabled={helpfeelExpanded.length === 0}
             >
+              <CirclePlus />
               <span>ヘルプを追加する</span>
               <CommandShortcut>
                 <CornerDownLeft />
@@ -305,7 +310,24 @@ function App() {
               }}
               disabled={helpfeelExpanded.length === 0}
             >
+              <Pencil />
               <span>ヘルプを更新する</span>
+              <CommandShortcut>
+                <CornerDownLeft />
+              </CommandShortcut>
+            </CommandItem>
+            <CommandItem
+              className="text-xs"
+              onSelect={() => {
+                if (!activeUrl) return;
+                editHelp(activeUrl, editingCommand, '').then(() => {
+                  setSearchText('');
+                  backPage();
+                });
+              }}
+            >
+              <CircleX />
+              <span>ヘルプを削除する</span>
               <CommandShortcut>
                 <CornerDownLeft />
               </CommandShortcut>
@@ -343,6 +365,7 @@ function App() {
                     setEditingCommand(item.command);
                   }}
                 >
+                  <CircleHelp />
                   <span>{item.command}</span>
                   <CommandShortcut>
                     <ChevronRight />

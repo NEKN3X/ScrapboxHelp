@@ -49,9 +49,11 @@ export const editHelp = async (
   if (!target) return;
   const newHelpStorageItem: HelpStorageItem = {
     page,
-    help: help.map((item) =>
-      item.command === command ? { ...item, command: newCommand } : item
-    ),
+    help: help
+      .map((item) =>
+        item.command === command ? { ...item, command: newCommand } : item
+      )
+      .filter((item) => item.command !== ''),
   };
   await updateHelp(newHelpStorageItem);
 };
@@ -67,10 +69,11 @@ const removeDuplicateHelp = (help: Help[]) => {
 export const updateHelp = async (input: HelpStorageItem) => {
   const storageData = await helpStorage.getValue();
   const filtered = storageData.filter((item) => item.page !== input.page);
-  await helpStorage.setValue([
-    ...filtered,
-    { ...input, help: removeDuplicateHelp(input.help) },
-  ]);
+  await helpStorage.setValue(
+    [...filtered, { ...input, help: removeDuplicateHelp(input.help) }].filter(
+      (item) => item.help.length > 0
+    )
+  );
 };
 
 export const updateManyHelp = async (input: HelpStorageItem[]) => {
