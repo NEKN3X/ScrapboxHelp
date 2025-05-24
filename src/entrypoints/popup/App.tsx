@@ -32,6 +32,7 @@ import {
   CornerDownLeft,
   ExternalLink,
   FilePlus,
+  Globe,
   Link2,
   MessageCircleQuestion,
   StickyNote,
@@ -213,20 +214,47 @@ function App() {
         {nowTopPage && (
           <CommandGroup heading="コマンド">
             {searchText.length > 0 && (
-              <CommandItem
-                className="text-xs"
-                onSelect={() =>
-                  openUrlWithModifier(
-                    `https://scrapbox.io/${import.meta.env.VITE_NEW_PAGE_PROJECT}/${searchText}`
-                  )
-                }
-              >
-                <FilePlus />
-                <span>新しいページを作成する</span>
-                <CommandShortcut>
-                  <ExternalLink />
-                </CommandShortcut>
-              </CommandItem>
+              <>
+                <CommandItem
+                  className="text-xs"
+                  onSelect={async () => {
+                    let disposition: 'CURRENT_TAB' | 'NEW_TAB' | 'NEW_WINDOW' =
+                      'CURRENT_TAB';
+                    if (isHotkeyPressed(['ctrl', 'shift']))
+                      disposition = 'NEW_WINDOW';
+                    else if (
+                      isHotkeyPressed('ctrl') ||
+                      isHotkeyPressed('shift')
+                    )
+                      disposition = 'NEW_TAB';
+                    await browser.runtime.sendMessage({
+                      type: 'scrapbox-help-extension:popup:search',
+                      query: searchText,
+                      disposition: disposition,
+                    });
+                  }}
+                >
+                  <Globe />
+                  <span>検索エンジンで検索する</span>
+                  <CommandShortcut>
+                    <ExternalLink />
+                  </CommandShortcut>
+                </CommandItem>
+                <CommandItem
+                  className="text-xs"
+                  onSelect={() =>
+                    openUrlWithModifier(
+                      `https://scrapbox.io/${import.meta.env.VITE_NEW_PAGE_PROJECT}/${searchText}`
+                    )
+                  }
+                >
+                  <FilePlus />
+                  <span>新しいページを作成する</span>
+                  <CommandShortcut>
+                    <ExternalLink />
+                  </CommandShortcut>
+                </CommandItem>
+              </>
             )}
             <CommandItem
               className="text-xs"

@@ -8,7 +8,15 @@ export default defineConfig({
   manifest: {
     name: import.meta.env.APP_NAME,
     options_page: 'options.html',
-    permissions: ['storage', `bookmarks`],
+    permissions: [
+      'storage',
+      'bookmarks',
+      'tabs',
+      'scripting',
+      'activeTab',
+      'background',
+      'search',
+    ],
     web_accessible_resources: [
       {
         resources: ['main-world.js'],
