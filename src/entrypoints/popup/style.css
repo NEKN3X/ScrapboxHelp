@@ -3,6 +3,6 @@ body {
 }
 
 :root {
-  width: max-content;
-  height: max-content;
+  width: 400px;
+  height: 300px;
 }

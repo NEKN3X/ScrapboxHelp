@@ -16,15 +16,15 @@ export const storeExampleScrapboxHelp = async () => {
       ],
     },
     {
-      page: `https://scrapbox.io/example-project2/example`,
+      page: 'https://wxt.dev',
       help: [
         {
-          command: 'xyzに関する(説明|情報)',
-          open: 'https://scrapbox.io/example-project2/xyz',
+          command: 'wxtに関する(説明|情報)',
+          open: 'https://wxt.dev',
         },
         {
-          command: 'abcに関する(説明|情報)',
-          open: 'https://scrapbox.io/example-project2/abc',
+          command: 'wxtのドキュメント',
+          open: 'https://wxt.dev',
         },
       ],
     },
