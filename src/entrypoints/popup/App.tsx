@@ -1,3 +1,4 @@
+import { browser } from '#imports';
 import {
   Command,
   CommandGroup,
@@ -7,7 +8,7 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from '@/components/ui/command';
-import { getAllHelp, HelpStorage } from '@/utils/help/storage';
+import { addHelpForPage, getAllHelp, HelpStorage } from '@/utils/help/storage';
 import {
   openUrlInCurrentTab,
   openUrlInNewBackgroundTab,
@@ -32,6 +33,8 @@ import {
 import { useEffect } from 'react';
 import { isHotkeyPressed } from 'react-hotkeys-hook';
 
+const activeTabIdAtom = atom<number>();
+const activeUrlAtom = atom<string>();
 const searchTextAtom = atom<string>('');
 const helpStorageAtom = atom<HelpStorage>([]);
 const pagesAtom = atom<string[]>([]);
@@ -88,10 +91,16 @@ function App() {
   const nowAddHelpPage = useAtomValue(isAddHelpPage);
   const nowTopPage = useAtomValue(isTopPage);
   const [pages, setPages] = useAtom(pagesAtom);
+  const setActiveTabId = useSetAtom(activeTabIdAtom);
+  const [activeUrl, setActiveUrl] = useAtom(activeUrlAtom);
 
   useEffect(() => {
     getAllHelp().then((helpStorage) => {
       setHelpStorage(helpStorage);
+    });
+    browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
+      setActiveTabId(tabs[0].id);
+      setActiveUrl(tabs[0].url);
     });
   }, []);
 
@@ -188,8 +197,14 @@ function App() {
               <CommandItem
                 className="text-xs"
                 onSelect={() => {
-                  console.log('add help');
-                  window.close();
+                  if (!activeUrl) return;
+                  addHelpForPage(activeUrl, {
+                    command: searchText,
+                    open: activeUrl,
+                  })
+                    .then
+                    // () => window.close()
+                    ();
                 }}
                 disabled={helpfeelExpanded.length === 0}
               >
@@ -208,16 +223,19 @@ function App() {
           )}
         </CommandGroup>
         {nowAddHelpPage && helpfeelExpanded.length > 0 && (
-          <CommandGroup
-            heading={<span className="flex">Helpfeel記法を展開後▼</span>}
-          >
-            {nowAddHelpPage &&
-              helpfeelExpanded.map((item) => (
-                <CommandItem disabled key={item} className="text-xs">
-                  {item}
-                </CommandItem>
-              ))}
-          </CommandGroup>
+          <>
+            <CommandSeparator alwaysRender />
+            <CommandGroup
+              heading={<span className="flex">Helpfeel記法を展開後▼</span>}
+            >
+              {nowAddHelpPage &&
+                helpfeelExpanded.map((item) => (
+                  <CommandItem disabled key={item} className="text-xs">
+                    {item}
+                  </CommandItem>
+                ))}
+            </CommandGroup>
+          </>
         )}
       </CommandList>
     </Command>

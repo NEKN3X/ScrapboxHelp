@@ -19,15 +19,33 @@ export const getAllHelp = async () => {
   return storageData;
 };
 
+const getHelpByPage = async (page: string) => {
+  const storageData = await helpStorage.getValue();
+  return storageData.filter((item) => item.page === page);
+};
+
+export const addHelpForPage = async (page: string, help: Help) => {
+  const pageHelpItems = await getHelpByPage(page);
+  const pageHelp = pageHelpItems.flatMap((item) => item.help);
+  if (pageHelp.some((item) => item.command === help.command)) return;
+  pageHelp.push(help);
+  const newHelpStorageItem: HelpStorageItem = {
+    page,
+    help: Array.from(pageHelp),
+  };
+  await updateHelp(newHelpStorageItem);
+};
+
 export const updateHelp = async (input: HelpStorageItem) => {
   const storageData = await helpStorage.getValue();
-  [storageData.filter((item) => item.page !== input.page), input];
+  const filtered = storageData.filter((item) => item.page !== input.page);
+  await helpStorage.setValue([...filtered, input]);
 };
 
 export const updateManyHelp = async (input: HelpStorageItem[]) => {
   const storageData = await helpStorage.getValue();
-  const newStorageData = storageData.filter(
+  const filtered = storageData.filter(
     (item) => !input.some((i) => i.page === item.page)
   );
-  helpStorage.setValue([...newStorageData, ...input]);
+  await helpStorage.setValue([...filtered, ...input]);
 };
