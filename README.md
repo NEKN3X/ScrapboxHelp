@@ -8,3 +8,8 @@
   - https://example.com/xyz
 
 ![](https://i.gyazo.com/cdc06bdb40f92f87c26959b4d9b23c50.jpg)
+
+- 追加予定の機能
+  - [ ] ScrapboxページのHelpfeel記法で書かれたヘルプを自動で保存する
+  - [ ] 自動で保存するプロジェクトの指定
+  - [ ] WebヘルプとScrapboxヘルプとScrapboxページの表示を変える(アイコンを変える)
