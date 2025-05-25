@@ -8,13 +8,15 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from '@/components/ui/command';
+import { scrapboxHelpStorage } from '@/utils/help/scrapbox';
 import {
   addHelpForPage,
   editHelp,
   getAllHelp,
   HelpStorage,
   watchHelpStorage,
-} from '@/utils/help/storage';
+} from '@/utils/help/util';
+import { webHelpStorage } from '@/utils/help/web';
 import {
   openUrlInCurrentTab,
   openUrlInNewBackgroundTab,
@@ -23,7 +25,6 @@ import {
 } from '@/utils/open';
 import { getAllScrapboxPages, ScrapboxPageStorage } from '@/utils/page/storage';
 import { expand } from '@/utils/parser/helpfeel';
-import { matchScrapboxUrl } from '@/utils/scrapbox';
 import { search, SearchResult } from '@/utils/search';
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai';
 import {
@@ -43,11 +44,13 @@ import {
 } from 'lucide-react';
 import { useEffect } from 'react';
 import { isHotkeyPressed } from 'react-hotkeys-hook';
+import { match } from 'ts-pattern';
 
 const activeTabIdAtom = atom<number>();
 const activeUrlAtom = atom<string>();
 const searchTextAtom = atom<string>('');
-const helpStorageAtom = atom<HelpStorage>([]);
+const webHelpStorageAtom = atom<HelpStorage>([]);
+const sbHelpStorageAtom = atom<HelpStorage>([]);
 const scrapboxPageStorageAtom = atom<ScrapboxPageStorage>([]);
 const pagesAtom = atom<string[]>([]);
 const pageAtom = atom((get) => {
@@ -84,22 +87,42 @@ const searchResultsAtom = atom((get) => {
   if (get(isAddHelpPage)) return [];
   const searchText = get(searchTextAtom);
   if (!searchText) return [];
-  const helpStorage = get(helpStorageAtom);
+  const webHelpStorage = get(webHelpStorageAtom);
+  const sbHelpStorage = get(sbHelpStorageAtom);
   const scrapboxPageStorage = get(scrapboxPageStorageAtom);
-  const suggests = helpStorage
+  const suggests = webHelpStorage
     .flatMap((item) =>
       item.help.flatMap((help) =>
-        expand(help.command).map((e) => ({
-          content: help.open,
-          description: e,
-        }))
+        expand(help.command).map(
+          (e): SearchResult => ({
+            content: help.open,
+            description: e,
+            type: 'WEB',
+          })
+        )
       )
     )
     .concat(
-      scrapboxPageStorage.flatMap((item) => ({
-        content: item.url,
-        description: item.title,
-      }))
+      sbHelpStorage.flatMap((item) =>
+        item.help.flatMap((help) =>
+          expand(help.command).map(
+            (e): SearchResult => ({
+              content: help.open,
+              description: e,
+              type: 'SCRAPBOX_HELP',
+            })
+          )
+        )
+      )
+    )
+    .concat(
+      scrapboxPageStorage.flatMap((item) =>
+        item.pages.flatMap((page) => ({
+          content: page.url,
+          description: page.title,
+          type: 'SCRAPBOX_PAGE',
+        }))
+      )
     );
   const result = search(suggests, searchText);
   return result
@@ -113,7 +136,7 @@ const searchResultsAtom = atom((get) => {
 const activeTabHelpAtom = atom(async (get) => {
   const activeUrl = get(activeUrlAtom);
   if (!activeUrl) return [];
-  const helpStorage = get(helpStorageAtom);
+  const helpStorage = get(webHelpStorageAtom);
   const pageHelp = helpStorage
     .filter((item) => item.page === activeUrl)
     .flatMap((item) => item.help);
@@ -121,7 +144,8 @@ const activeTabHelpAtom = atom(async (get) => {
 });
 
 function App() {
-  const setHelpStorage = useSetAtom(helpStorageAtom);
+  const setHelpStorage = useSetAtom(webHelpStorageAtom);
+  const setSbHelpStorage = useSetAtom(sbHelpStorageAtom);
   const setScrapboxPageStorage = useSetAtom(scrapboxPageStorageAtom);
   const [searchText, setSearchText] = useAtom(searchTextAtom);
   const searchResults = useAtomValue(searchResultsAtom);
@@ -136,13 +160,16 @@ function App() {
   const [editingCommand, setEditingCommand] = useAtom(editingCommandAtom);
 
   useEffect(() => {
-    getAllHelp().then((helpStorage) => {
+    getAllHelp(webHelpStorage).then((helpStorage) => {
       setHelpStorage(helpStorage);
     });
     getAllScrapboxPages().then((scrapboxPageStorage) => {
       setScrapboxPageStorage(scrapboxPageStorage);
     });
-    const unwatchHelpStorage = watchHelpStorage((n) => {
+    getAllHelp(scrapboxHelpStorage).then((sbHelpStorage) => {
+      setSbHelpStorage(sbHelpStorage);
+    });
+    const unwatchWebHelpStorage = watchHelpStorage(webHelpStorage)((n) => {
       setHelpStorage(n);
     });
     browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
@@ -151,7 +178,7 @@ function App() {
     });
 
     return () => {
-      unwatchHelpStorage();
+      unwatchWebHelpStorage();
     };
   }, []);
 
@@ -204,7 +231,11 @@ function App() {
                   className="text-xs"
                   onSelect={() => openUrlWithModifier(item.content)}
                 >
-                  {matchScrapboxUrl(item.content) ? <StickyNote /> : <Link2 />}
+                  {match(item.type)
+                    .with('WEB', () => <Link2 />)
+                    .with('SCRAPBOX_HELP', () => <CircleHelp />)
+                    .with('SCRAPBOX_PAGE', () => <StickyNote />)
+                    .run()}
                   <span>{item.description}</span>
                   <CommandShortcut>
                     <ExternalLink />
@@ -279,7 +310,7 @@ function App() {
               className="text-xs"
               onSelect={() => {
                 if (!activeUrl) return;
-                addHelpForPage(activeUrl, {
+                addHelpForPage(webHelpStorage)(activeUrl, {
                   command: searchText,
                   open: activeUrl,
                 }).then(() => {
@@ -303,7 +334,11 @@ function App() {
               className="text-xs"
               onSelect={() => {
                 if (!activeUrl) return;
-                editHelp(activeUrl, editingCommand, searchText).then(() => {
+                editHelp(webHelpStorage)(
+                  activeUrl,
+                  editingCommand,
+                  searchText
+                ).then(() => {
                   setSearchText('');
                   backPage();
                 });
@@ -320,10 +355,12 @@ function App() {
               className="text-xs"
               onSelect={() => {
                 if (!activeUrl) return;
-                editHelp(activeUrl, editingCommand, '').then(() => {
-                  setSearchText('');
-                  backPage();
-                });
+                editHelp(webHelpStorage)(activeUrl, editingCommand, '').then(
+                  () => {
+                    setSearchText('');
+                    backPage();
+                  }
+                );
               }}
             >
               <CircleX />

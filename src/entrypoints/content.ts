@@ -11,8 +11,8 @@ export default defineContentScript({
     await injectScript('/main-world.js', {
       keepInDom: true,
     });
-    const observer = new MutationObserver(async (x) => {
-      const el = document.getElementById('scrapbox-help-extension');
+    const pagesObserver = new MutationObserver(async (x) => {
+      const el = document.getElementById('scrapbox-help-extension-pages');
       if (!el) return;
       const pages = JSON.parse(el.getAttribute('data-pages') || '[]');
       el.remove();
@@ -24,7 +24,23 @@ export default defineContentScript({
         ),
       });
     });
-    observer.observe(document.body, {
+    pagesObserver.observe(document.body, {
+      childList: true,
+    });
+    const linesObserver = new MutationObserver(async (x) => {
+      const el = document.getElementById('scrapbox-help-extension-lines');
+      if (!el) return;
+      const lines = JSON.parse(el.getAttribute('data-lines') || '[]');
+      el.remove();
+      browser.runtime.sendMessage({
+        type: 'scrapbox-help-extension:content-script:lines',
+        project: match.project,
+        page: match.title,
+        url: location.href,
+        lines,
+      });
+    });
+    linesObserver.observe(document.body, {
       childList: true,
     });
   },

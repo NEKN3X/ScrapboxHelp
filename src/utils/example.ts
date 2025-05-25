@@ -1,4 +1,4 @@
-import { HelpStorageItem, updateManyHelp } from './help/storage';
+import { HelpStorageItem, updateManyHelp } from './help/web';
 
 export const storeExampleScrapboxHelp = async () => {
   const example: HelpStorageItem[] = [
