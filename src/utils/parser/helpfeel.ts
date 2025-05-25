@@ -1,5 +1,14 @@
+import {
+  bind,
+  orElse,
+  parse,
+  Parser,
+  pure,
+  sat,
+  some,
+  symbol,
+} from 'ts-monadic-parser';
 import { match, P } from 'ts-pattern';
-import { bind, orElse, parse, Parser, pure, sat, some, symbol } from './parser';
 
 // helpfeel記法を展開する
 // "? ログイン方法がわからない"
