@@ -51,6 +51,13 @@ export const editHelp =
     await updateHelp(storage)(newHelpStorageItem);
   };
 
+export const removeHelpByPage =
+  (storage: WxtHelpStorageItem) => async (page: string) => {
+    const storageData = await storage.getValue();
+    const filtered = storageData.filter((item) => item.page !== page);
+    await storage.setValue(filtered);
+  };
+
 const removeDuplicateHelp = (help: Help[]) => {
   return help.reduce((acc, item) => {
     const isDuplicate = acc.some((i) => i.command === item.command);

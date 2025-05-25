@@ -7,7 +7,6 @@ export default defineContentScript({
     const match = matchScrapboxUrl(location.href);
     if (!match) return;
     if (match?.project !== import.meta.env.VITE_NEW_PAGE_PROJECT) return;
-    console.log('match', match);
     await injectScript('/main-world.js', {
       keepInDom: true,
     });

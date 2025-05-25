@@ -1,16 +1,9 @@
-import { storage } from '#imports';
 import { match, P } from 'ts-pattern';
-import { Help, HelpStorage, HelpStorageItem } from './util';
+import { getAllScrapboxPages, putPage } from '../page/storage';
+import { Help } from './util';
 
-export const scrapboxHelpStorage = storage.defineItem<HelpStorage>(
-  'local:help-sb',
-  {
-    fallback: [],
-  }
-);
-
-export const extractHelp = (page: string, lines: string[]): HelpStorageItem => {
-  const help: Help[] = lines
+export const extractHelp = (page: string, lines: string[]): Help[] => {
+  return lines
     .map((x, i) => ({
       text: x,
       next: i + 1 < lines.length ? lines[i + 1] : undefined,
@@ -28,9 +21,20 @@ export const extractHelp = (page: string, lines: string[]): HelpStorageItem => {
         open,
       };
     });
+};
 
-  return {
-    page,
+export const updateScrapboxPageHelp = async (
+  project: string,
+  url: string,
+  help: Help[]
+) => {
+  const pageStorage = await getAllScrapboxPages();
+  const pages = pageStorage.find((x) => x.project === project);
+  if (!pages) return;
+  const page = pages.pages.find((x) => x.url === url);
+  if (!page) return;
+  await putPage({
+    ...page,
     help,
-  };
+  });
 };

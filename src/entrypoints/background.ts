@@ -1,6 +1,5 @@
 import { browser, defineBackground } from '#imports';
-import { extractHelp, scrapboxHelpStorage } from '@/utils/help/scrapbox';
-import { updateHelp } from '@/utils/help/util';
+import { extractHelp, updateScrapboxPageHelp } from '@/utils/help/scrapbox';
 import { putPages, ScrapboxPage } from '@/utils/page/storage';
 import { matchScrapboxUrl } from '@/utils/scrapbox';
 
@@ -16,6 +15,7 @@ export default defineBackground(async () => {
           {
             ...match,
             url,
+            help: [],
           },
         ];
       });
@@ -34,8 +34,8 @@ export default defineBackground(async () => {
       debounceTimer = setTimeout(async () => {
         const help = extractHelp(message.url, message.lines);
         console.log('help', help);
-        await updateHelp(scrapboxHelpStorage)(help);
-      }, 3000);
+        await updateScrapboxPageHelp(message.project, message.url, help);
+      }, 1000);
     }
   });
 });

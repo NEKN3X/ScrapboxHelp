@@ -8,7 +8,6 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from '@/components/ui/command';
-import { scrapboxHelpStorage } from '@/utils/help/scrapbox';
 import {
   addHelpForPage,
   editHelp,
@@ -50,7 +49,6 @@ const activeTabIdAtom = atom<number>();
 const activeUrlAtom = atom<string>();
 const searchTextAtom = atom<string>('');
 const webHelpStorageAtom = atom<HelpStorage>([]);
-const sbHelpStorageAtom = atom<HelpStorage>([]);
 const scrapboxPageStorageAtom = atom<ScrapboxPageStorage>([]);
 const pagesAtom = atom<string[]>([]);
 const pageAtom = atom((get) => {
@@ -88,7 +86,6 @@ const searchResultsAtom = atom((get) => {
   const searchText = get(searchTextAtom);
   if (!searchText) return [];
   const webHelpStorage = get(webHelpStorageAtom);
-  const sbHelpStorage = get(sbHelpStorageAtom);
   const scrapboxPageStorage = get(scrapboxPageStorageAtom);
   const suggests = webHelpStorage
     .flatMap((item) =>
@@ -103,25 +100,21 @@ const searchResultsAtom = atom((get) => {
       )
     )
     .concat(
-      sbHelpStorage.flatMap((item) =>
-        item.help.flatMap((help) =>
-          expand(help.command).map(
-            (e): SearchResult => ({
+      scrapboxPageStorage.flatMap((item) =>
+        item.pages.flatMap((page) => [
+          {
+            content: page.url,
+            description: page.title,
+            type: 'SCRAPBOX_PAGE',
+          },
+          ...page.help.map(
+            (help): SearchResult => ({
               content: help.open,
-              description: e,
+              description: help.command,
               type: 'SCRAPBOX_HELP',
             })
-          )
-        )
-      )
-    )
-    .concat(
-      scrapboxPageStorage.flatMap((item) =>
-        item.pages.flatMap((page) => ({
-          content: page.url,
-          description: page.title,
-          type: 'SCRAPBOX_PAGE',
-        }))
+          ),
+        ])
       )
     );
   const result = search(suggests, searchText);
@@ -145,7 +138,6 @@ const activeTabHelpAtom = atom(async (get) => {
 
 function App() {
   const setHelpStorage = useSetAtom(webHelpStorageAtom);
-  const setSbHelpStorage = useSetAtom(sbHelpStorageAtom);
   const setScrapboxPageStorage = useSetAtom(scrapboxPageStorageAtom);
   const [searchText, setSearchText] = useAtom(searchTextAtom);
   const searchResults = useAtomValue(searchResultsAtom);
@@ -165,9 +157,6 @@ function App() {
     });
     getAllScrapboxPages().then((scrapboxPageStorage) => {
       setScrapboxPageStorage(scrapboxPageStorage);
-    });
-    getAllHelp(scrapboxHelpStorage).then((sbHelpStorage) => {
-      setSbHelpStorage(sbHelpStorage);
     });
     const unwatchWebHelpStorage = watchHelpStorage(webHelpStorage)((n) => {
       setHelpStorage(n);
